@@ -1,18 +1,22 @@
-name: Tests (Node.js)
+name: Tests
+
+run-name: Unit tests for ${{ github.head_ref }} triggered by @${{ github.actor }}
 
 on: [ push, pull_request ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  test:
     strategy:
       matrix:
         node-version: [ 18.x, 20.x, 22.x ]
 
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Using Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ node-version }}
           cache: 'npm'
