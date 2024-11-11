@@ -18,7 +18,7 @@ jobs:
       - name: Using Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ node-version }}
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
       #  https://docs.npmjs.com/cli/v8/commands/npm-ci
