@@ -1,24 +1,11 @@
-/* MIT License
-
-Copyright (c) 2024 pushfoo
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. */
+/**
+ * Backports of newer Set functionality.
+ * 
+ * For more on which recently added set methods are covered, see the following:
+ * https://developer.mozilla.org/en-US/blog/javascript-set-methods/
+ * 
+ * @module sets/setpolyfill
+ */
 
 /********************************************
  *******     Monkeypatch helpers    *********
@@ -194,12 +181,11 @@ const alreadyPolyfilled = new _LocalPatchedTracker();
 /**
  * Polyfill a set type with good-enough versions of recent operations.
  *
- * For more on which recently added set methods are covered, see the following:
- * https://developer.mozilla.org/en-US/blog/javascript-set-methods/
- *
  * For the moment, this mostly helps unit testing ahead for future
- * compatibility efforts. Improving this requires setting up babel,
- * other transpilation, or moving this file from ES6 module style.
+ * compatibility efforts. Improving this requires one of the following:
+ * 
+ * 1. setting up babel or other transpilation
+ * 2. moving this file from ES6 module style.
  *
  * @param {type} type - The Set type or a subclass of it.
  * @param {bool} replaceExisting - Whether to force-replace prototype members

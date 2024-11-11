@@ -1,8 +1,19 @@
-# EasySetsJS
+# Sets
 
-**TL;DR:** One file with sets and variations on them.
+[![License](https://img.shields.io/badge/License-MIT-License.svg)](https://opensource.org/license/mit)
+[![Tests (main)](https://github.com/PegboardJS/Sets/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/pushfoo/PegboardJS/Sets/actions/workflows/test.yaml?branch=main)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://makeapullrequest.com)
 
-## Use Case
 
-When you need easy, good-enough versions of fancy new `Set` features,
-even on older browsers.
+**TL;DR:** Sets and set accessories
+
+## Goals
+
+Provide good-enough versions of:
+
+- [x] Backports of standard `Set` features for older browsers
+- [ ] Multi-Sets
+
+### Future 
+
+- [ ] Ordered Sets
