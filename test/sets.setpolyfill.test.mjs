@@ -43,7 +43,7 @@ testHelperFunction('polyfillSetType', 'replaces all elements when forcePatch == 
     polyfillSetType(PolyfilledSet, {force : true}); // force monkeypatching
     const setProto = PolyfilledSet.prototype
     for (const [name, patch] of Object.entries(setPatches)) {
-        expect(setProto[name]).toBe(patch);
+        expect(Object.is(setProto[name], patch)).toBe(true);
     }
 });
 
