@@ -1,14 +1,14 @@
 {
-  "name": "easysets",
+  "name": "@pegboardjs/setlike",
   "version": "1.0.0",
   "description": "Easy sets and set-like data structures",
-  "main": "src/easysets.mjs",
+  "main": "src/setlike.mjs",
   "scripts": {
     "test": "vitest"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pushfoo/EasySetsJS.git"
+    "url": "git+https://github.com/PegboardJS/SetLike.git"
   },
   "keywords": [
     "set"
@@ -16,9 +16,9 @@
   "author": "pushfoo",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/pushfoo/EasySetsJS/issues"
+    "url": "https://github.com/PegboardJS/SetLike/issues"
   },
-  "homepage": "https://github.com/pushfoo/EasySetsJS#readme",
+  "homepage": "https://github.com/PegboardJS/SetLike#readme",
   "devDependencies": {
     "vitest": "^2.1.4"
   }

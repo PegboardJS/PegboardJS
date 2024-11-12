@@ -4,17 +4,17 @@
  */
 import { expect, test, assert, describe, it } from "vitest"
 import { setPatches, polyfillSetType } from "../src/sets.setpolyfill"
+import { skipIfNodeVersionGt } from "./helpers.mjs";
 
 
-const majorVersion = Number(process.version.split('.')[0]);
+skipIfNodeVersionGt(20);
 
 
 /**
  * Avoid boilerplate by making test helpers.
  * 
- * @param {string} kind - 
- * @param {*} namePreprocess 
- * @returns 
+ * @param {function} namePreprocess - A function which extracts a formatted name string
+ * @returns {function} - a test function
  */
 function buildTestHelper(namePreprocess = (fnName) => fnName) {
     return (fnOrAction, condition, ...rest) => {
@@ -35,7 +35,6 @@ function buildTestHelper(namePreprocess = (fnName) => fnName) {
     }
 }
 
-const testHelperFunction    = buildTestHelper();
 const testSetMethodPolyfill = buildTestHelper((name) => `Set.${name}`);
 
 // Let's not clobber the base Set type
@@ -69,6 +68,7 @@ for (const [name, fn] of Object.entries(setPatches)) {
     });
 }});
 
+
 describe('All set-returning methods return new sets', () => {
     for (const [name, fn] of Object.entries(setPatches)) {
         // exclude "is" method names since they return bools
@@ -81,8 +81,8 @@ describe('All set-returning methods return new sets', () => {
     }
 });
 
+
 describe('test Set.isSubsetOf', () => {
-    // isSubsetOf tests
     it('returns true when base set is an empty set', () => { 
         assert(EMPTY_SET.isSubsetOf(EMPTY_SET));
         assert(EMPTY_SET.isSubsetOf(SIMPLE_SET_0_1));
@@ -96,6 +96,7 @@ describe('test Set.isSubsetOf', () => {
         assert(! (SIMPLE_SET_0_1.isSubsetOf(EMPTY_SET)) );
     });
 });
+
 
 describe('test Set.isSupersetOf', () => {
     // isSupersetOfTests
@@ -114,6 +115,7 @@ describe('test Set.isSupersetOf', () => {
 
 });
 
+
 describe('test Set.isDisjointFrom', () => {
     it('returns true when no shared elements', () => {
         assert(SIMPLE_SET_0_1.isDisjointFrom(SIMPLE_SET_2_3));
@@ -126,6 +128,7 @@ describe('test Set.isDisjointFrom', () => {
         assert(! (SIMPLE_SET_2_3.isDisjointFrom(SIMPLE_SET_0_THRU_3)) );
     })
 });
+
 
 describe('test Set.difference', () => {
     testSetMethodPolyfill('difference', 'returns equal set when empty set is base', () => {
@@ -144,7 +147,7 @@ describe('test Set.difference', () => {
     });
 });
 
-// Union tests
+
 describe('test Set.union', () => {
     it('returns empty set when both are empty', () => {
         expect(EMPTY_SET.union(EMPTY_SET)).toEqual(EMPTY_SET);
@@ -159,6 +162,7 @@ describe('test Set.union', () => {
         expect(SIMPLE_SET_2_3.union(EMPTY_SET)).toEqual(SIMPLE_SET_2_3);
     });
 });
+
 
 describe('test Set.intersection', () => {
     it('returns empty when both base and argument are empty sets', () => {
