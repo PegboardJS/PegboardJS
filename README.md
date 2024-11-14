@@ -8,12 +8,16 @@
 **TL;DR:** Sets and set accessories
 
 ## Goals
+[counters]: https://docs.python.org/3/library/collections.html#collections.Counter
 
 Provide good-enough versions of:
 
 - [x] Backports of standard `Set` features for older browsers
-- [ ] Multi-Sets
+- [ ] Multi-Sets [^1]
 
-### Future 
+[jsset]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
 
-- [ ] Ordered Sets
+No `OrderedSet` is necessary since JavaScript's `Set` [iterates in insertion order][jsset].
+
+
+[^1]: Also known as "bags" (or [`Counter`][counters] if you know Python)
