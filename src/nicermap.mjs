@@ -26,9 +26,8 @@ export class MapWithDefaultGet extends Map {
             case 0:
                 return super.get(key);
             case 1:
-                return this.has(key)
-                    ? super.get(key)
-                    : rest[0];
+                if (this.has(key)) { return super.get(key); }
+                else               { return rest[0]; }
             default:
                 throw RangeError(`${this.constructor.name} only supports 1 or 2 arguments`);
         }

@@ -1,4 +1,4 @@
-import { MultiSet } from "../src/multiset.mjs";
+import { MultiSet } from "../src/countingsets.mjs";
 
 import { assert, describe, expect, it } from "vitest";
 
@@ -126,10 +126,10 @@ describe('test MultiSet', () => {
         });
 
         it('subtracts from keys when none would underflow', () => {
-            const big = [['a', 1], ['b', 2], ['c', 3]]
+            const big = [['a', 1], ['b', 2], ['c', 3]];
             const values = new MultiSet(big);
-            const result = values.substractMultiSet(values);
-            assert(result.size === 0);
+            values.substractMultiSet(values);
+            assert(values.size === 0);
         });
     });
 })
