@@ -1,3 +1,39 @@
+import { isLikeReadableMap, implementsIterable, isFunction } from "./inspect.mjs";
+
+export function asMapArgPairs(iterable) {
+    if (isLikeReadableMap(iterable)) { return iterable.entries(); }
+    else if (implementsIterable(iterable)) { return iterable[Symbol.iterator](); }
+
+    return null;
+}
+
+
+/**
+ * Contains requirements for
+ */
+export class Requirements extends Map {
+    constructor(iterable = undefined) {
+        super();
+        if (iterable === undefined) return;
+        const pairs = asMapArgPairs(iterable);
+        if (pairs === null)
+            throw TypeError(`can't intialize Value requirements ${JSON.stringify(iterable)} appears to be like neither a Map nor pair Array`);
+
+        for (const pair of pairs) this.set(...pair);
+    }
+
+    set(requirement, problemWhenFailed) {
+        if (!isFunction(requirement)) throw TypeError(`keys must be predicates, but got ${JSON.stringify(requirement)}`);
+        if (!isFunction(problemWhenFailed)) throw TypeError(`values must be exception-creating functions, but got ${JSON.string(problemWhenFailed)}`);
+    }
+
+    check(value) {
+        for (const [requirement, problemWhenFailed] of this.entries()) {
+            if (!requirement(value)) return problemWhenFailed;
+        }
+        return null;
+    }
+}
 
 /**
  * A small upgrade to the default Map behavior which permits default getting.
@@ -33,3 +69,40 @@ export class MapWithDefaultGet extends Map {
         }
     }
 }
+
+class ValidatingMap extends MapWithDefaultGet {
+    checkValue(value) {
+        for(const [req, problem] of this.keyRequirements.entries()) {
+
+        }
+    }
+    constructor(
+        iterable = undefined,
+        {keyRequirements = undefined, valueRequirements = undefined} = {}
+    ) {
+        super();
+        if(keyRequirements   === undefined) keyRequirements   = new Requirements();
+        if(valueRequirements === undefined) valueRequirements = new Requirements();
+        this.keyRequirements = keyRequirements;
+        this.valueRequirements = valueRequirements;
+        if (iterable === undefined) return;
+
+        const pairs = [...asMapArgPairs(iterable)];
+        if (pairs === null)
+            throw TypeError(`can't intialize Value requirements ${JSON.stringify(iterable)} appears to be like neither a Map nor pair Array`);
+        if (allOf(pairs.map((...rest) => {
+           const [k, v] = rest;
+           // Make sure we don't have an issue
+           const keyProblem = keyRequirements.check(k);
+           if(keyProblem) { throw keyProblem('key failed to meet requirements'); }
+
+           return keyRequirements.check(k) && valueRequirements.check(v);
+        })) ) {
+            // skip revalidation on the instance set method
+            for (const pair of pairs) super.set(...pair);
+        } else {
+        }
+    }
+}
+
+

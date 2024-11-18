@@ -1,16 +1,43 @@
-import { isIterable, tryGetTypeName } from "./shared.mjs";
+import { tryGetTypeName } from "./shared.mjs";
+import { implementsIterable, isLikeReadableMap } from "./inspect.mjs";
 import { MapWithDefaultGet } from "./nicermap.mjs";
 
 
 /**
- * Basic counting set akin to Python's collections.Counter built-in.
+ * Map variant akin to Python's collections.Counter built-in.
  * 
  * 
  */
 export class Counter extends MapWithDefaultGet {
     #total; // How many elements we have total
+
+    /**
+     * The total of all values as a read-only value.
+     * 
+     * IMPORTANT: For the number of keys, use size.
+     * 
+     * This can be negative if total counts are negative.
+     * 
+     * @returns {integer} - the total count.
+     */
     get total() { return this.#total; }
 
+    // static valueRequirements = new Map([
+    //     [(value) => (typeof value === 'number'), TypeError],
+    //     [Number.isInteger, RangeError]
+    // ]);
+
+    // /**
+    //  *  
+    //  * @param {object} value 
+    //  * @returns 
+    //  */
+    // checkValue(value) {
+    //     for(const [requirement, failType ] of this.valueRequirements.entries()) {
+    //         if(! requirement(value) ) return failType;
+    //     }
+    //     return null;
+    // }
 
     constructor(iterable = undefined) {
         // Basic init and early exit if nothing to count
@@ -18,34 +45,48 @@ export class Counter extends MapWithDefaultGet {
         if (iterable === undefined) return;
 
         // Attempt to process it
-        if (iterable instanceof Map) {
-            it = iterable.entries();
-        } else if (isIterable(iterable)) {
+        if (isLikeReadableMap(iterable)) {
+            for(const v of iterable.values) {
+                if(!Number.isInteger(v)) throw TypeError();
+            }
+        } else if (implementsIterable(iterable)) {
             this.countIterable(iterable, this);
         } else {
             throw TypeError(`${JSON.stringify(iterable)} does not appear to be a map`)
         }
     }
 
+    /**
+     * 
+     * @param {*} key 
+     * @param {integer} integer - An int value
+     * @returns 
+     */
     set(key, integer) {
         if (! (typeof integer !== 'number')) {
-            throw TypeError(`${tryGetTypeName(this)} takes integer values, not ${JSON.stringify(integer)}`);
+            throw TypeError(`${tryGetTypeName(this)} takes integer values, not ${integer}`);
         } else if (! Number.isInteger(integer)) {
-            throw RangeError(`${tryGetTypeName(this)} takes integer values, not ${JSON.stringify(integer)}`);
+            throw RangeError(`${tryGetTypeName(this)} takes integer values, not ${integer}`);
         }
-
+        var diff = 0;
         if (this.has(key)) {
             const oldValue = this.get(key);
             if (oldValue === integer) return;
-
-            const diff = integer - oldValue;
-            this.#total += diff;
+            diff += integer - oldValue;
         } else {
-            this.#total += 1;
+            diff += 1;
         }
         super.set(key, integer);
+        // Validation occurs
+        this.#total += diff;
     }
 
+    /**
+     * 
+     * @param {*} key 
+     * @param {integer} defaultValue 
+     * @returns 
+     */
     get(key, defaultValue = 0) {
         return super.get(key, defaultValue);
     }
@@ -215,29 +256,22 @@ export class MultiSet extends MapWithDefaultGet {
         * 2. We don't want to allow leaving multi-sets in invalid states
         */
         const underflow = this.#checkForUnderflow(otherMultiSet, (a, b) => a >= b);
+
+        // Maps aren't falsy when empty
         if (underflow.size) {
             const keyStr = underflow.size > 1
                 ? 'keys'
                 : 'key';
 
-            const prefix = `can't subtract: ${keyStr} would underflow: `;
+            const prefix = `can't subtract: ${keyStr} would underflow`;
             const parts = [];
             for (const [k, vals] of underflow.entries()) {
                 const [a, b] = vals;
                 parts.push(`${JSON.stringify(k)} (this ${a}) < (other ${b})`);
             }
-            throw RangeError(prefix + parts.join(', '));
+            throw RangeError(`${prefix}:  ${parts.join(', ')}`);
 
         }
-        // for (const [key, otherValue] of otherMultiSet.entries()) {
-        //     const thisValue = this.get(key, 0);
-
-        //     if (thisValue < otherValue) {
-        //         throw RangeError(
-        //             `key ${JSON.stringify(key)} would underflow: ${thisValue} in left set, ${otherValue} in other`);
-        //     }}
-
-        // }
         for (const pair of otherMultiSet.entries()) {
             this.decrement(...pair);
         }
