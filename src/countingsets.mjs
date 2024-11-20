@@ -27,13 +27,14 @@ export class Counter extends MapWithDefaultGet {
      * @returns {integer} - the total count.
      */
     get total() { return this.#total; }
-    badSetValue(type, value, prefix = undefined) {
+
+    badSetValue(type, value) {
         return new type(`expected integer value, not ${value}`);
     }
 
     checkValue(value, prefix = undefined) {
-        if      (typeof value !== 'number')   { return this.badSetValue(TypeError, value, prefix);       }
-        else if ((! Number.isInteger(value))) { return this.badSetValue(UnexpectedFloat, value, prefix); }
+        if      (typeof value !== 'number')   { return this.badSetValue(TypeError, value);       }
+        else if ((! Number.isInteger(value))) { return this.badSetValue(UnexpectedFloat, value); }
         return null;
     }
 
@@ -44,7 +45,7 @@ export class Counter extends MapWithDefaultGet {
 
         // Attempt to process it
         if (isLikeReadableMap(iterable)) {
-            for(const v of iterable.values) {
+            for(const v of iterable.values()) {
                 if(!Number.isInteger(v)) throw TypeError();
             }
         } else if (implementsIterable(iterable)) {
@@ -55,7 +56,8 @@ export class Counter extends MapWithDefaultGet {
     }
 
     /**
-     * 
+     * Set a key to an integer value.
+     *     
      * @param {*} key 
      * @param {integer} integer - An int value
      * @returns 
@@ -65,14 +67,17 @@ export class Counter extends MapWithDefaultGet {
         if (problem) throw problem;
 
         const oldValue = this.get(key, 0);
-        if (oldValue === integer) return;
-        if (integer  === 0) {
-            this.delete(key);
-        }
-        else {
-            const diff = integer - oldValue;
-            super.set(key, integer);
-            this.#total += diff;
+        switch(integer) {
+            case oldValue:
+                return;
+            case 0:
+                this.delete(key);
+                break;
+            default:
+                const diff = integer - oldValue;
+                super.set(key, integer);
+                this.#total += diff;
+                break;
         }
         return this;
     }
@@ -115,7 +120,7 @@ export class Counter extends MapWithDefaultGet {
      * @param {*} counter - An optional counter to write to.
      * @returns The counter object used: either the passed one or a new Counter.
      */
-    static countLinear(iterable, counter = undefined) {
+    static count(iterable, counter = undefined) {
         if (countStore === undefined) counter = new Counter();
         for (const key of iterable) {
             // We might get a Map-like without support for default get as the counter
@@ -145,36 +150,12 @@ export class MultiSet extends Counter {
         }
     }
 
-    #checkNewValue(value, prefix = undefined) {
-        if (value < 0) { return super.badSetValue(UnexpectedNegative, value, prefix); }
-        return null;
-    }
-    #checkSetArg(value) { 
-        return this.checkValue(value) || this.#checkNewValue(value);
-    }
-
-    /**
-     * Behaves like a standard 
-     * 
-     * @param {*} key - Any value a map can hold
-     * @param {*} value - An integer of value >= 0
-     * @returns the same MultiSet 
-     */
-    set(key, value) {
-        // Exceptions on any weird values 
-        const problem = this.#checkSetArg(value);
-        if(problem) throw problem;
-        const oldValue = this.get(key)
-        // Early exit to save work
-
-        if (oldValue === value) return;
-
-        else if (value === 0) { this.delete(key); }
-        else                  { super.set(key, value); }
-
-        // Match the default JS Map.set behavior per MDN
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map/set#return_value
-        return this;
+    checkValue(value) {
+        var problem = super.checkValue(value);
+        if(problem  === null && value < 0) {
+            problem = this.badSetValue(UnexpectedNegative, value);
+        }
+        return problem;
     }
 
     /**
