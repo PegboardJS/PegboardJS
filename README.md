@@ -7,7 +7,7 @@
 A tiny toolkit to help sharably prototype various tools.
 
 ## Goals
-[counters]: https://docs.python.org/3/library/collections.html#collections.Counter
+[counter]: https://docs.python.org/3/library/collections.html#collections.Counter
 
 Provide good-enough versions of:
 
