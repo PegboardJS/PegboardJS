@@ -1,7 +1,7 @@
 # PegboardJS
 
 [![License](https://img.shields.io/badge/License-MIT-License.svg)](https://opensource.org/license/mit)
-[![Tests (main)](https://github.com/PegboardJS/Sets/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/pushfoo/PegboardJS/Sets/actions/workflows/test.yaml?branch=main)
+[![Tests (main)](https://github.com/PegboardJS/PegboardJS/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/pushfoo/PegboardJS/PegboardJS/actions/workflows/test.yaml?branch=main)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://makeapullrequest.com)
 
 A tiny toolkit to help sharably prototype various tools.
