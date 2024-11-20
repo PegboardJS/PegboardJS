@@ -16,9 +16,13 @@ export function isFunction(object) {
 }
 
 export function hasFunction(object, lookup) {
-    if (! (lookup in object)) return false;
-    const fn = object[lookup];
-    return Boolean(fn) && isFunction(fn);
+    if (object === undefined || object === null) return false;
+    try {
+        return lookup in object && isFunction(object[lookup]);
+    } catch { return false; }
+    // if (! (lookup in object)) return false;
+    // const fn = object[lookup];
+    // return Boolean(fn) && isFunction(fn);
 }
 
 /**
@@ -30,9 +34,17 @@ export function hasFunction(object, lookup) {
  * @returns {boolean}- whether it's a non-null with Symbol.iterator.
  */
 export function implementsIterable(object) {
-    if (Boolean(object) && hasFunction(object, Symbol.iterator));
+    // Optimize later. This is correct enough for now.
+    try   { return Symbol.iterator in object; }
+    catch { return false; }
 }
 
+/**
+ * Returns true if the object has a callable Symbol.iterator and a has method. 
+ *
+ * @param {*} object 
+ * @returns {boolean}
+ */
 export function implementsIterableWithHas(object) {
     if (! object) return false;
     return implementsIterable(object) && hasFunction(object, 'has');

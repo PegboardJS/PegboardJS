@@ -4,6 +4,30 @@
 
 import { skip } from "vitest";
 
+export const NOT_FUNCTIONS = [
+    null,
+    undefined,
+    1,
+    "string",
+    [1, 2, 3],
+    new Map()
+];
+
+export const NOT_ITERABLES = [
+    null, undefined,
+    1,
+    {}
+];
+
+export const NOT_NUMBERS = [
+    null, undefined, {a: 1},
+];
+export const NOT_INTEGERS = [
+    ...NOT_NUMBERS, 0.1
+];
+export const NOT_NATURAL_NUMBERS = [
+    ...NOT_INTEGERS, -1
+];
 const versionNumber = []
 
 

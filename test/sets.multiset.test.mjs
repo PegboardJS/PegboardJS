@@ -1,10 +1,93 @@
-import { UnexpectedFloat, UnexpectedNegative, MultiSet } from "../src/countingsets.mjs";
+import { UnexpectedFloat, UnexpectedNegative, Counter, MultiSet, count } from "../src/countingsets.mjs";
 
 import { assert, describe, expect, it } from "vitest";
-
+import { NOT_INTEGERS, NOT_ITERABLES, NOT_NUMBERS } from "./helpers.mjs";
+import { tryGetTypeName } from "../src/shared.mjs";
 
 const OBJECT_KEY = {a: 'alice', b: 'bob'};
 const NEGATIVE_KEYS = [[-1, 2],[-2,1], [-999, 5]];
+
+function getCounterVals() {
+    return [new Map(), new Counter()];
+}
+
+describe(Counter, () => {
+    describe('checkValue', () => {
+        const c = new Counter();
+        it('returns TypeError for non-numbers', () => {
+            for(const non of NOT_NUMBERS) {
+                const result = c.checkValue(non);
+                expect(result).toBeInstanceOf(TypeError);
+            }
+        });
+        it('returns RangeError for non-natural', () => {
+            for(const non of [0.1, -0.1]) {
+                const result = c.checkValue(non);
+                expect(result).toBeInstanceOf(RangeError);
+            }
+        });
+    });
+    describe('set', () => {
+        it('sets value when valid on fresh', () => {
+            const c = new Counter();
+            c.set(1, 1);
+            assert(c.has(1));
+            assert(c.get(1) == 1);
+        });
+        it('sets value when valid overwriting old value', () => {
+            const c = new Counter();
+            c.set(1, 1);
+            c.set(1, 2);
+            assert(c.get(1) == 2);
+        });
+        it('deletes key when overwriting with zero', () => {
+            const c = new Counter();
+            c.set(1, 1);
+            c.set(1, 0);
+            assert(! c.has(1));
+        });
+
+    })
+});
+
+describe(count, () => {
+    // function forAllCounterVals(string, values, fn) {
+    //     it(string, () => {
+    //         for (const v of values) {
+    //             fn()
+    //         }
+    //     });
+    // }
+    it('rejects counters which are non-iterables', () => {
+        for (const notIt of NOT_ITERABLES) {
+            for (const counter of getCounterVals()) {
+                expect(() => {
+                    count(notIt, counter);
+                }).toThrow(TypeError);
+            }
+        }
+    });
+    it('rejects counters with partial get / set ', () => {
+        for (const iterable of [
+            {get: (key) => 0},
+            {set: (key, value) => {return this; }}
+        ]) {
+            iterable[Symbol.iterator] = () => [];
+            expect(() => { count([], iterable);} ).toThrow(TypeError);
+        }
+    });
+
+    for (const counter of getCounterVals()) {
+        for (const iterable of [[1,2,3], new Set([1,2,3])]) {
+
+            it(`accepts ${tryGetTypeName(iterable)} iterables (counter is ${tryGetTypeName(counter)})`, () => {
+                    count(iterable, counter);
+            });
+
+        }
+    }
+
+});
 
 
 describe('test MultiSet', () => {

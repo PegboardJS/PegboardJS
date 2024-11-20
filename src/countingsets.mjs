@@ -25,14 +25,17 @@ export class UnexpectedNegative extends RangeError {}
  * @param {*} counter - An optional counter to write to.
  * @returns The counter object used: either the passed one or a new Counter.
  */
-export function count(iterable, counter = undefined) {
+export function count(iterable, counter) {
     if (! implementsIterable(iterable))
         throw TypeError(`expected iterable, but got ${JSON.stringify(iterable)}`);
-    if (counter === undefined) counter = new Counter();
+    if (! (hasFunction(counter, 'set') && hasFunction(counter, 'get')))
+        throw new TypeError(`any provided counter must be have map-like get and set methods, but got ${JSON.stringify(counter)}`);
 
+    var oldCount;
     for (const key of iterable) {
         // We might get a Map-like without support for default get as the counter
-        const oldCount = (counter.has(key) ? counter.get(key) : 0);
+        if (counter.has(key)) { oldCount = counter.get(oldCount); }
+        else                  { oldCount = 0; }
         counter.set(oldCount + 1);
     }
     return counter;
@@ -90,7 +93,7 @@ export class Counter extends MapWithDefaultGet {
     checkMapLikeValues(mapLike, checker) {
         var problem;
         for (v in mapLike.values()) {
-            if((problem = checker(v))) throw v;
+            if((problem = checker(v))) return v;
         }
         return null;
     }
@@ -99,13 +102,17 @@ export class Counter extends MapWithDefaultGet {
         // Basic init and early exit if nothing to count
         super();
 
+
         if      (iterable === undefined)       { return; }
         else if (implementsIterable(iterable)) {
-            if ('get' in iterable) {
+            if (hasFunction(iterable, 'get') && hasFunction(iterable, 'keys')) {
                 // It's Map-like
                 var problem;
                 if ((problem = this.checkMapLikeValues(iterable, this.checkValue)))
                     throw problem;
+                for (const k of iterable.keys()) {
+                    this.set(k, iterable.get(k));
+                }
             } else {
                 count(iterable, this);
             }
@@ -158,6 +165,7 @@ export class Counter extends MapWithDefaultGet {
 
         const newCount = this.get(key) + by;
         this.set(key, newCount);
+        return this;
     }
 
     decrement(key, by=1) {
@@ -166,6 +174,7 @@ export class Counter extends MapWithDefaultGet {
 
         const newCount = this.get(key) - by;
         this.set(key, newCount);
+        return this;
     }
 
     operatorBase(operator, operand, counter = undefined, keyChoice = sharedKeys) {
@@ -173,14 +182,13 @@ export class Counter extends MapWithDefaultGet {
         if (counter === undefined) counter = new this.prototype.constructor();
 
         var maplike;
-        if ('get' in iterable) {
+        if (hasFunction(operand, 'get')) {
             var problem = this.checkMapLikeValues(operand, Counter.checkValue);
             if (problem) throw problem;
             maplike = operand;
         }
-        else {
-            count(operand, counter);
-        }
+        else { count(operand, counter); }
+
         for (const k of keyChoice(this, maplike)) {
             const a = this.get(k);
             const b = other.has(k) ? other.get(k) : 0;

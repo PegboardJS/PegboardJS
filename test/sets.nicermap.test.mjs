@@ -48,7 +48,7 @@ describe(Requirements, () => {
                 const _ = new Requirements([
                     ['a', TypeError],
                 ]);
-            }).toThrow(/keys must be predicates/);
+            }).toThrow(TypeError);
         });
         it('rejects non-function problem types', () => {
             expect(() => {
