@@ -32,7 +32,7 @@ export class Counter extends MapWithDefaultGet {
         return new type(`expected integer value, not ${value}`);
     }
 
-    checkValue(value, prefix = undefined) {
+    checkValue(value) {
         if      (typeof value !== 'number')   { return this.badSetValue(TypeError, value);       }
         else if ((! Number.isInteger(value))) { return this.badSetValue(UnexpectedFloat, value); }
         return null;
@@ -41,15 +41,17 @@ export class Counter extends MapWithDefaultGet {
     constructor(iterable = undefined) {
         // Basic init and early exit if nothing to count
         super();
-        if (iterable === undefined) return;
 
-        // Attempt to process it
-        if (isLikeReadableMap(iterable)) {
-            for(const v of iterable.values()) {
-                if(!Number.isInteger(v)) throw TypeError();
+        if      (iterable === undefined)       { return; }
+        else if (implementsIterable(iterable)) {
+            if ('get' in iterable) {
+                // It's Map-like
+                for(const v of iterable.values()) {
+                    if(!Number.isInteger(v)) throw TypeError();
+                }
+            } else {
+                this.countIterable(iterable, this);
             }
-        } else if (implementsIterable(iterable)) {
-            this.countIterable(iterable, this);
         } else {
             throw TypeError(`${JSON.stringify(iterable)} does not appear to be a map`)
         }
@@ -83,7 +85,8 @@ export class Counter extends MapWithDefaultGet {
     }
 
     /**
-     * 
+     * Get a key, defaulting to 0.
+     *  
      * @param {*} key 
      * @param {integer} defaultValue 
      * @returns 
@@ -138,7 +141,7 @@ export class Counter extends MapWithDefaultGet {
  * longer show up when has() is called. 
  */
 export class MultiSet extends Counter {
-    badSetValue(type, value, prefix = undefined) {
+    badSetValue(type, value) {
         return new type(`expected integer value >= 0, not ${value}`);
     }
 
