@@ -1,7 +1,7 @@
 import { isLikeReadableMap, implementsIterable, isFunction } from "./inspect.mjs";
 
 export function asMapArgPairs(iterable) {
-    if (isLikeReadableMap(iterable)) { return iterable.entries(); }
+    if (isLikeReadableMap(iterable))       { return iterable.entries(); }
     else if (implementsIterable(iterable)) { return iterable[Symbol.iterator](); }
 
     return null;
@@ -70,30 +70,28 @@ export class MapWithDefaultGet extends Map {
     }
 }
 
-class ValidatingMap extends MapWithDefaultGet {
-    checkValue(value) {
-        for(const [req, problem] of this.keyRequirements.entries()) {
+function alwaysTrue(o) { return true; }
 
-        }
-    }
-    constructor(
-        iterable = undefined,
-        {keyRequirements = undefined, valueRequirements = undefined} = {}
-    ) {
+
+class ValidatingMap extends MapWithDefaultGet {
+    checkValue(value) {}
+    checkKey(key)     {}
+    checkPair(pair)   {}
+
+    constructor(iterable = undefined) {
         super();
-        if(keyRequirements   === undefined) keyRequirements   = new Requirements();
-        if(valueRequirements === undefined) valueRequirements = new Requirements();
-        this.keyRequirements = keyRequirements;
-        this.valueRequirements = valueRequirements;
         if (iterable === undefined) return;
 
         const pairs = [...asMapArgPairs(iterable)];
         if (pairs === null)
             throw TypeError(`can't intialize Value requirements ${JSON.stringify(iterable)} appears to be like neither a Map nor pair Array`);
-        if (allOf(pairs.map((...rest) => {
-           const [k, v] = rest;
+        if (allOf(pairs.map((pair) => {
+           const [key, value] = pair;
            // Make sure we don't have an issue
-           const keyProblem = keyRequirements.check(k);
+           this.checkKey(key);
+           this.checkValue(value);
+           this.checkPair(rest);
+
            if(keyProblem) { throw keyProblem('key failed to meet requirements'); }
 
            return keyRequirements.check(k) && valueRequirements.check(v);

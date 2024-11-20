@@ -3,10 +3,16 @@ import { implementsIterable, isLikeReadableMap } from "./inspect.mjs";
 import { MapWithDefaultGet } from "./nicermap.mjs";
 
 
+// Shared by Counter and MultiSet
+export class UnexpectedFloat    extends RangeError {}
+export class UnexpectedNegative extends RangeError {}
+
+
+
 /**
- * Map variant akin to Python's collections.Counter built-in.
+ * Map variant which tracks quantities for each key, including negatives.
  * 
- * 
+ *This is like Python's collections.Counter in some ways.
  */
 export class Counter extends MapWithDefaultGet {
     #total; // How many elements we have total
@@ -21,23 +27,15 @@ export class Counter extends MapWithDefaultGet {
      * @returns {integer} - the total count.
      */
     get total() { return this.#total; }
+    badSetValue(type, value, prefix = undefined) {
+        return new type(`expected integer value, not ${value}`);
+    }
 
-    // static valueRequirements = new Map([
-    //     [(value) => (typeof value === 'number'), TypeError],
-    //     [Number.isInteger, RangeError]
-    // ]);
-
-    // /**
-    //  *  
-    //  * @param {object} value 
-    //  * @returns 
-    //  */
-    // checkValue(value) {
-    //     for(const [requirement, failType ] of this.valueRequirements.entries()) {
-    //         if(! requirement(value) ) return failType;
-    //     }
-    //     return null;
-    // }
+    checkValue(value, prefix = undefined) {
+        if      (typeof value !== 'number')   { return this.badSetValue(TypeError, value, prefix);       }
+        else if ((! Number.isInteger(value))) { return this.badSetValue(UnexpectedFloat, value, prefix); }
+        return null;
+    }
 
     constructor(iterable = undefined) {
         // Basic init and early exit if nothing to count
@@ -63,22 +61,20 @@ export class Counter extends MapWithDefaultGet {
      * @returns 
      */
     set(key, integer) {
-        if (! (typeof integer !== 'number')) {
-            throw TypeError(`${tryGetTypeName(this)} takes integer values, not ${integer}`);
-        } else if (! Number.isInteger(integer)) {
-            throw RangeError(`${tryGetTypeName(this)} takes integer values, not ${integer}`);
+        const problem = this.checkValue(integer);
+        if (problem) throw problem;
+
+        const oldValue = this.get(key, 0);
+        if (oldValue === integer) return;
+        if (integer  === 0) {
+            this.delete(key);
         }
-        var diff = 0;
-        if (this.has(key)) {
-            const oldValue = this.get(key);
-            if (oldValue === integer) return;
-            diff += integer - oldValue;
-        } else {
-            diff += 1;
+        else {
+            const diff = integer - oldValue;
+            super.set(key, integer);
+            this.#total += diff;
         }
-        super.set(key, integer);
-        // Validation occurs
-        this.#total += diff;
+        return this;
     }
 
     /**
@@ -90,7 +86,23 @@ export class Counter extends MapWithDefaultGet {
     get(key, defaultValue = 0) {
         return super.get(key, defaultValue);
     }
-    
+
+    increment(key, count=1) {
+        var problem;
+        if ((problem = this.checkValue(count))) throw problem;
+
+        const newCount = this.get(key) + count;
+        this.set(key, newCount);
+    }
+
+    decrement(key, count=1) {
+        var problem;
+        if ((problem = this.checkValue(count))) throw problem;
+
+        const newCount = this.get(key) - count;
+        this.set(key, newCount);
+    }
+
     /**
      * Helper static method for counting linear iterables such as arrays.
      * 
@@ -106,12 +118,9 @@ export class Counter extends MapWithDefaultGet {
     static countLinear(iterable, counter = undefined) {
         if (countStore === undefined) counter = new Counter();
         for (const key of iterable) {
-            if (counter.has(key)) {
-                const oldCount = counter.get(key);
-                counter.set(oldCount + 1);
-            } else {
-                counter.set(key, 1);
-            }
+            // We might get a Map-like without support for default get as the counter
+            const oldCount = (counter.has(key) ? counter.get(key) : 0)
+            counter.set(oldCount + 1);
         }
     }
 }
@@ -123,7 +132,11 @@ export class Counter extends MapWithDefaultGet {
  * IMPORTANT: setting a value to 0 deletes the key and it will no
  * longer show up when has() is called. 
  */
-export class MultiSet extends MapWithDefaultGet {
+export class MultiSet extends Counter {
+    badSetValue(type, value, prefix = undefined) {
+        return new type(`expected integer value >= 0, not ${value}`);
+    }
+
     constructor(iterable = undefined) {
         super();
         if (iterable === undefined) return;
@@ -131,10 +144,13 @@ export class MultiSet extends MapWithDefaultGet {
             this.set(key, value);
         }
     }
-    get(key) { return super.get(key, 0); }
 
-    #badSetValue(value) {
-        return `${this.constructor.name} values must be integers >= 0, not ${value}`;
+    #checkNewValue(value, prefix = undefined) {
+        if (value < 0) { return super.badSetValue(UnexpectedNegative, value, prefix); }
+        return null;
+    }
+    #checkSetArg(value) { 
+        return this.checkValue(value) || this.#checkNewValue(value);
     }
 
     /**
@@ -145,69 +161,20 @@ export class MultiSet extends MapWithDefaultGet {
      * @returns the same MultiSet 
      */
     set(key, value) {
-        if (typeof value !== 'number')
-            throw TypeError(this.#badSetValue(value));
-        else if ((! Number.isInteger(value)) || value < 0) {
-            throw RangeError(this.#badSetValue(value));
-        }
-        if (this.has(key) && this.get(key) == value) {
-            return;
-        }
-        else if (value === 0) {
-            this.delete(key);
-        }
-        else {
-            super.set(key, value);
-        }
+        // Exceptions on any weird values 
+        const problem = this.#checkSetArg(value);
+        if(problem) throw problem;
+        const oldValue = this.get(key)
+        // Early exit to save work
+
+        if (oldValue === value) return;
+
+        else if (value === 0) { this.delete(key); }
+        else                  { super.set(key, value); }
+
         // Match the default JS Map.set behavior per MDN
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map/set#return_value
         return this;
-    }
-
-    /**
-     * Attempt to add the count value to the entry for the given key.
-     * 
-     * For absent keys, this is equivalent to setting the key directly.
-     * 
-     * @param {*} key - Any key supported by a JS Map object
-     * @param {number} count - an integer which will not underflow 0 for the key
-     */
-    increment(key, count=1) {
-        if (! ((typeof count) === 'number')) {
-            throw TypeError(`can't increment by non-number ${JSON.stringify(count)}: by must be an integer`);
-        }
-        else if(! Number.isInteger(count)) {
-            throw RangeError(`can't increment by non-int number ${JSON.stringify(count)}: by must be an integer`);
-        }
-        const operationResult = this.get(key) + count;
-        if (operationResult < 0) {
-            throw RangeError(`can't increment by ${count}: result would be negative`);
-        }
-        this.set(key, operationResult);
-    }
-
-    /**
-     * Attempt to substract the count from the stored value for this key.
-     * 
-     * If a call would underflow 0:
-     * 1. This function will throw a RangeError
-     * 2. The subtraction will not be applied
-     * 
-     * If a value hits exactly zero, the key will be deletd afterward.
-     * 
-     * @param {*} key - Any key supported by a JS Map object
-     * @param {number} count - an integer which will not underflow 0 for the key
-     */
-    decrement(key, count=1) {
-        if (typeof count !== 'number')
-            throw TypeError(`can't decrement ${JSON.stringify(key)} by non-number ${JSON.stringify(count)}: by must be an integer`);
-        else if(! Number.isInteger(count))
-            throw RangeError(`can't decrement ${JSON.stringify(key)} by non-int number ${JSON.stringify(count)}: by must be an integer`);
-        const operationResult = this.get(key) - count;
-        if (operationResult < 0)
-            throw RangeError(`can't decrement ${JSON.stringify(key)} by ${count}: result would be negative`);
-        
-        this.set(key, operationResult);
     }
 
     /**
@@ -269,7 +236,7 @@ export class MultiSet extends MapWithDefaultGet {
                 const [a, b] = vals;
                 parts.push(`${JSON.stringify(k)} (this ${a}) < (other ${b})`);
             }
-            throw RangeError(`${prefix}:  ${parts.join(', ')}`);
+            throw new UnexpectedNegative(`${prefix}:  ${parts.join(', ')}`);
 
         }
         for (const pair of otherMultiSet.entries()) {
