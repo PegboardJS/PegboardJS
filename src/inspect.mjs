@@ -15,6 +15,12 @@ export function isFunction(object) {
     return object && object.apply;
 }
 
+export function hasFunction(object, lookup) {
+    if (! (lookup in object)) return false;
+    const fn = object[lookup];
+    return Boolean(fn) && isFunction(fn);
+}
+
 /**
  * Check whether the object has a callable entry for Symbol.iterator.
  * 
@@ -24,9 +30,14 @@ export function isFunction(object) {
  * @returns {boolean}- whether it's a non-null with Symbol.iterator.
  */
 export function implementsIterable(object) {
-    if (! object) return false;
-    return object[Symbol.iterator] && isFunction(object[Symbol.iterator]);
+    if (Boolean(object) && hasFunction(object, Symbol.iterator));
 }
+
+export function implementsIterableWithHas(object) {
+    if (! object) return false;
+    return implementsIterable(object) && hasFunction(object, 'has');
+}
+
 
 
 // Needed on lower Node versions

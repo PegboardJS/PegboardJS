@@ -1,4 +1,4 @@
-import { MultiSet } from "../src/countingsets.mjs";
+import { UnexpectedFloat, UnexpectedNegative, MultiSet } from "../src/countingsets.mjs";
 
 import { assert, describe, expect, it } from "vitest";
 
@@ -6,22 +6,23 @@ import { assert, describe, expect, it } from "vitest";
 const OBJECT_KEY = {a: 'alice', b: 'bob'};
 const NEGATIVE_KEYS = [[-1, 2],[-2,1], [-999, 5]];
 
+
 describe('test MultiSet', () => {
     describe('constructor', () => {
         describe('rejects invalid values', () => {
             it('negative values for a key throw RangeError', () => {
                 expect(() => {
                     const m = new MultiSet([[0, -1],]);
-                }).toThrow(/values must be integers \>\= 0/);
+                }).toThrow(UnexpectedNegative);
                 expect(() => {
                     const m = new MultiSet([[-1, -1],]);
-                }).toThrow(/values must be integers \>\= 0/);
+                }).toThrow(UnexpectedNegative);
             });
 
             it('float values rejected with RangeError', () => {
                 expect(() => {
-                const m = new MultiSet(['a', 1.2]);
-                }).toThrow(/values must be integers \>\= 0/);
+                const m = new MultiSet([['a', 1.2],]);
+                }).toThrow(UnexpectedFloat);
             });
         })
         describe('test accepting valid values', () => {
@@ -75,8 +76,8 @@ describe('test MultiSet', () => {
     function badShifter(incOrDecName, m = undefined) {
         if (m === undefined) m = new MultiSet();
         it(`${incOrDecName} rejects non-integers`, () => {
-           expect(() => { m[incOrDecName](OBJECT_KEY, 'not a number') }).toThrow(/by non\-number/);
-           expect(() => { m[incOrDecName](OBJECT_KEY, 0.1) }).toThrow(/by non\-int number/);
+           expect(() => { m[incOrDecName](OBJECT_KEY, 'not a number') }).toThrow(TypeError);
+           expect(() => { m[incOrDecName](OBJECT_KEY, 0.1) }).toThrow(UnexpectedFloat);
         })
     }
     describe('test increment', () => {
@@ -93,7 +94,7 @@ describe('test MultiSet', () => {
         });
         it('throws exception for negative values which would overflow', () => {
             for(const [v, k] of keys.entries()) {
-                expect(() => m.increment(k, -1 * (v + 1))).toThrow(/result would be negative/)
+                expect(() => m.increment(k, -1 * (v + 1))).toThrow(UnexpectedNegative)
             }
         });
         badShifter('increment', new MultiSet());
@@ -101,9 +102,9 @@ describe('test MultiSet', () => {
 
     describe('test decrement', () => {
         it('throws exception for values which could cause underflow', () => {
-            expect(() => { new MultiSet().decrement('a') }).toThrow(/result would be negative/);
-            expect(() => { new MultiSet().decrement(OBJECT_KEY) }).toThrow(/result would be negative/);
-            expect(() => { new MultiSet().decrement(0) }).toThrow(/result would be negative/);
+            expect(() => { new MultiSet().decrement('a') }).toThrow(UnexpectedNegative);
+            expect(() => { new MultiSet().decrement(OBJECT_KEY) }).toThrow(UnexpectedNegative);
+            expect(() => { new MultiSet().decrement(0) }).toThrow(UnexpectedNegative);
         });
         badShifter('decrement');
     })
@@ -113,7 +114,7 @@ describe('test MultiSet', () => {
             // TODO: expand API to allow Map?
             const values = [0, [1,2], new Map([[1,2], [2,3]])]
             for (const bad of values) {
-                expect(() => m.addMultiSet(bad).toThrow(/can\'t add non-\MultiSet/));
+                expect(() => m.addMultiSet(bad).toThrow(TypeError));
             }
         });
     });
@@ -122,7 +123,7 @@ describe('test MultiSet', () => {
             const zeroed = new MultiSet()
             const hasValues = new MultiSet([['someKey',2],]);
             assert(Array.from(hasValues.entries()).length === 1);
-            expect(() => { zeroed.substractMultiSet(hasValues); }).toThrow(/would underflow/);
+            expect(() => { zeroed.substractMultiSet(hasValues); }).toThrow(UnexpectedNegative);
         });
 
         it('subtracts from keys when none would underflow', () => {

@@ -23,8 +23,8 @@ export class Requirements extends Map {
     }
 
     set(requirement, problemWhenFailed) {
-        if (!isFunction(requirement)) throw TypeError(`keys must be predicates, but got ${JSON.stringify(requirement)}`);
-        if (!isFunction(problemWhenFailed)) throw TypeError(`values must be exception-creating functions, but got ${JSON.string(problemWhenFailed)}`);
+        if (! isFunction(requirement)) throw TypeError(`keys must be predicates, but got ${JSON.stringify(requirement)}`);
+        if (! isFunction(problemWhenFailed)) throw TypeError(`values must be exception-creating functions, but got ${JSON.string(problemWhenFailed)}`);
     }
 
     check(value) {

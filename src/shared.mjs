@@ -28,6 +28,11 @@ export function makePassthruCache(cacheObject) {
     return passThruCacheFunction;
 }
 
+export function defaultGet(hasGet, key, defaultValue) {
+    if(hasGet.has(key)) return hasGet.get(key);
+    return defaultValue;
+}
+
 const typeCache = new Map();
 const cacheType = makePassthruCache(typeCache);
 

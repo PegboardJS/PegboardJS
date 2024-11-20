@@ -1,6 +1,11 @@
+/**
+ * Counter and multi-set classes and their helpers.
+ * 
+ */
 import { tryGetTypeName } from "./shared.mjs";
-import { implementsIterable, isLikeReadableMap } from "./inspect.mjs";
+import { hasFunction, implementsIterable, implementsIterableWithHas, isLikeReadableMap } from "./inspect.mjs";
 import { MapWithDefaultGet } from "./nicermap.mjs";
+import { add, subtract } from "./operators.mjs";
 
 
 // Shared by Counter and MultiSet
@@ -8,11 +13,55 @@ export class UnexpectedFloat    extends RangeError {}
 export class UnexpectedNegative extends RangeError {}
 
 
+/**
+ * Helper static method for counting linear iterables such as arrays.
+ *
+ * Pass a target Map-like object to write count values to it. If a count
+ * for a key is absent, it will be created on demand. When the counter
+ * object not provided, this method will create a new Counter to use and
+ * return it.
+ *
+ * @param {*} iterable - The linear iterable to count.
+ * @param {*} counter - An optional counter to write to.
+ * @returns The counter object used: either the passed one or a new Counter.
+ */
+export function count(iterable, counter = undefined) {
+    if (! implementsIterable(iterable))
+        throw TypeError(`expected iterable, but got ${JSON.stringify(iterable)}`);
+    if (counter === undefined) counter = new Counter();
+
+    for (const key of iterable) {
+        // We might get a Map-like without support for default get as the counter
+        const oldCount = (counter.has(key) ? counter.get(key) : 0);
+        counter.set(oldCount + 1);
+    }
+    return counter;
+}
+
+export function sharedKeys(...haveKeys) {
+    var allKeys = new Set();
+    for(const item in haveKeys) {
+        allKeys = allKeys.union(haveKeys);
+    }
+    return allKeys;
+}
+
+export function setAsMapLike(object) {
+    if      (implementsIterableWithHas(object)) return null;
+    else if (hasFunction(other, 'get'))         return object;
+    else {
+        return new Proxy(other, {
+            get(key) { return other.has(key) ? 1 : 0; }
+        });
+    }
+}
 
 /**
  * Map variant which tracks quantities for each key, including negatives.
  * 
- *This is like Python's collections.Counter in some ways.
+ * NOTE: If a key's value is set to 0, it will be deleted from the Counter.
+ * 
+ * This is like Python's collections.Counter. in some ways.
  */
 export class Counter extends MapWithDefaultGet {
     #total; // How many elements we have total
@@ -38,6 +87,14 @@ export class Counter extends MapWithDefaultGet {
         return null;
     }
 
+    checkMapLikeValues(mapLike, checker) {
+        var problem;
+        for (v in mapLike.values()) {
+            if((problem = checker(v))) throw v;
+        }
+        return null;
+    }
+
     constructor(iterable = undefined) {
         // Basic init and early exit if nothing to count
         super();
@@ -46,14 +103,14 @@ export class Counter extends MapWithDefaultGet {
         else if (implementsIterable(iterable)) {
             if ('get' in iterable) {
                 // It's Map-like
-                for(const v of iterable.values()) {
-                    if(!Number.isInteger(v)) throw TypeError();
-                }
+                var problem;
+                if ((problem = this.checkMapLikeValues(iterable, this.checkValue)))
+                    throw problem;
             } else {
-                this.countIterable(iterable, this);
+                count(iterable, this);
             }
         } else {
-            throw TypeError(`${JSON.stringify(iterable)} does not appear to be a map`)
+            throw TypeError(`${JSON.stringify(iterable)} does not appear to be an iterable`);
         }
     }
 
@@ -62,7 +119,7 @@ export class Counter extends MapWithDefaultGet {
      *     
      * @param {*} key 
      * @param {integer} integer - An int value
-     * @returns 
+     * @returns {Counter} - This counter instance, as with the JS Set type.
      */
     set(key, integer) {
         const problem = this.checkValue(integer);
@@ -85,72 +142,96 @@ export class Counter extends MapWithDefaultGet {
     }
 
     /**
-     * Get a key, defaulting to 0.
+     * Get a value for the passed key, or the defaultValue if not found.
      *  
-     * @param {*} key 
-     * @param {integer} defaultValue 
-     * @returns 
+     * @param {*} key - A key to get the value for
+     * @param {integer} defaultValue - A value to return if the key isn't found
+     * @returns {integer} -  
      */
     get(key, defaultValue = 0) {
         return super.get(key, defaultValue);
     }
 
-    increment(key, count=1) {
+    increment(key, by=1) {
         var problem;
-        if ((problem = this.checkValue(count))) throw problem;
+        if ((problem = this.checkValue(by))) throw problem;
 
-        const newCount = this.get(key) + count;
+        const newCount = this.get(key) + by;
         this.set(key, newCount);
     }
 
-    decrement(key, count=1) {
+    decrement(key, by=1) {
         var problem;
-        if ((problem = this.checkValue(count))) throw problem;
+        if ((problem = this.checkValue(by))) throw problem;
 
-        const newCount = this.get(key) - count;
+        const newCount = this.get(key) - by;
         this.set(key, newCount);
     }
 
-    /**
-     * Helper static method for counting linear iterables such as arrays.
-     * 
-     * Pass a target Map-like object to write count values to it. If a count
-     * for a key is absent, it will be created on demand. When the counter
-     * object not provided, this method will create a new Counter to use and
-     * return it. 
-     * 
-     * @param {*} iterable - The linear iterable to count.
-     * @param {*} counter - An optional counter to write to.
-     * @returns The counter object used: either the passed one or a new Counter.
-     */
-    static count(iterable, counter = undefined) {
-        if (countStore === undefined) counter = new Counter();
-        for (const key of iterable) {
-            // We might get a Map-like without support for default get as the counter
-            const oldCount = (counter.has(key) ? counter.get(key) : 0)
-            counter.set(oldCount + 1);
+    operatorBase(operator, operand, counter = undefined, keyChoice = sharedKeys) {
+        if (! implementsIterable(iterable)) throw TypeError('expected linear iterable or map');
+        if (counter === undefined) counter = new this.prototype.constructor();
+
+        var maplike;
+        if ('get' in iterable) {
+            var problem = this.checkMapLikeValues(operand, Counter.checkValue);
+            if (problem) throw problem;
+            maplike = operand;
         }
+        else {
+            count(operand, counter);
+        }
+        for (const k of keyChoice(this, maplike)) {
+            const a = this.get(k);
+            const b = other.has(k) ? other.get(k) : 0;
+            newValue = operator(a, b);
+            counter.set(k, newValue);
+        }
+        return counter;
     }
+
+    isSubsetOf(otherSetLike) {
+        const other = setAsMapLike(otherSetLike)
+        if (other === null) throw TypeError(
+            `expected set-like object, not ${JSON.stringify(otherSetLike)}`);
+
+        for (const [k, v] of this.entries()) {
+            if(! other.has(k)) return false;
+            const otherV = other.get(k);
+
+            if      (! Number.isInteger(otherV))                       return false;
+            else if (this.v != 0 && Math.sign(otherV) != Math.sign(v)) return false;
+            else if (Math.abs(v) > Math.abs(otherV))                   return false;
+        }
+        return true;
+    }
+
+    isSupersetOf() {
+
+    }
+
+    union(iterable, counter = undefined) {
+        return this.operator(add, iterable, counter);
+    }
+
+    intersection(iterable, counter = undefined) {
+        return this.operator(Math.min, iterable, counter);
+    }
+
+    difference(iterable, counter = undefined) {
+        return this.operator(subtract, iterable, counter);
+    }
+
 }
 
 
 /**
- * A data structure which requires all values be integers >= 0.
+ * Like Counter, but it requires all values be >= 0.
  * 
- * IMPORTANT: setting a value to 0 deletes the key and it will no
- * longer show up when has() is called. 
  */
 export class MultiSet extends Counter {
     badSetValue(type, value) {
         return new type(`expected integer value >= 0, not ${value}`);
-    }
-
-    constructor(iterable = undefined) {
-        super();
-        if (iterable === undefined) return;
-        for (const [key, value] of iterable.values()) {
-            this.set(key, value);
-        }
     }
 
     checkValue(value) {
@@ -159,6 +240,14 @@ export class MultiSet extends Counter {
             problem = this.badSetValue(UnexpectedNegative, value);
         }
         return problem;
+    }
+
+    constructor(iterable = undefined) {
+        super();
+        if (iterable === undefined) return;
+        for (const [key, value] of iterable.values()) {
+            this.set(key, value);
+        }
     }
 
     /**
