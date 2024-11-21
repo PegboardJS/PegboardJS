@@ -22,6 +22,7 @@ const readOnlyLikes = [
             mapLike
         ];
 
+        
 describe('isLikeReadableMap', () => {
     it('recognizes Map instances', () => {
         for (const imp of readOnlyLikes) {
@@ -32,6 +33,7 @@ describe('isLikeReadableMap', () => {
         assert(! (isLikeReadableMap(new Set())));
     })
 });
+
 
 describe('isLikeWritableMap', () => {
     it('rejects read-only-likes', () => {

@@ -36,7 +36,7 @@ export function count(iterable, counter) {
         // We might get a Map-like without support for default get as the counter
         if (counter.has(key)) { oldCount = counter.get(oldCount); }
         else                  { oldCount = 0; }
-        counter.set(oldCount + 1);
+        counter.set(key, oldCount + 1);
     }
     return counter;
 }

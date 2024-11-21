@@ -2,6 +2,7 @@ import { isFunction, hasFunction, implementsIterable, implementsIterableWithHas 
 import { assert, describe, except, it } from 'vitest';
 import { NOT_FUNCTIONS } from "./helpers.mjs";
 
+
 describe(isFunction, () => {
     it('returns false for non-function objects', () => {
         for (const notFn of NOT_FUNCTIONS) {

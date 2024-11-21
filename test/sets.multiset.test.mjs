@@ -27,6 +27,14 @@ describe(Counter, () => {
             }
         });
     });
+    describe('get', () => {
+        it('returns zero for non-existent values when no default provided', () => {
+            assert((new Counter().get('a') === 0));
+        });
+        it('returns default for non-existent values when provided', () => {
+            assert((new Counter().get('b', 2) === 2));
+        });
+    });
     describe('set', () => {
         it('sets value when valid on fresh', () => {
             const c = new Counter();
@@ -78,13 +86,13 @@ describe(count, () => {
     });
 
     for (const counter of getCounterVals()) {
-        for (const iterable of [[1,2,3], new Set([1,2,3])]) {
-
-            it(`accepts ${tryGetTypeName(iterable)} iterables (counter is ${tryGetTypeName(counter)})`, () => {
-                    count(iterable, counter);
-            });
-
-        }
+        describe(`when counter is a ${tryGetTypeName(counter)}`, () => {
+            for (const iterable of [[1,2,3], new Set([1,2,3])]) {
+                it(`count accepts ${tryGetTypeName(iterable)} iterables`, () => {
+                        count(iterable, counter);
+                });
+            }
+        });
     }
 
 });
