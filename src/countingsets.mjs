@@ -153,12 +153,19 @@ export class Counter extends MapWithDefaultGet {
      *  
      * @param {*} key - A key to get the value for
      * @param {integer} defaultValue - A value to return if the key isn't found
-     * @returns {integer} -  
+     * @returns {integer} - Either a value or the defaultValue
      */
     get(key, defaultValue = 0) {
         return super.get(key, defaultValue);
     }
 
+    /**
+     * Add the passed amount to the value for the given key.
+     * 
+     * @param {*} key - the key to add to
+     * @param {*} by  - the amount to add to the key (defaults to 1)
+     * @returns {Counter} - the same object.
+     */
     increment(key, by=1) {
         var problem;
         if ((problem = this.checkValue(by))) throw problem;
@@ -167,7 +174,14 @@ export class Counter extends MapWithDefaultGet {
         this.set(key, newCount);
         return this;
     }
-
+    
+    /**
+     * Remove the passed amount from the value for the given key.
+     *  
+     * @param {*} key - The key to subtract from.
+     * @param {*} by  - the amount to add (defaults to 1)
+     * @returns {Counter} - the same object.
+     */
     decrement(key, by=1) {
         var problem;
         if ((problem = this.checkValue(by))) throw problem;
@@ -177,9 +191,18 @@ export class Counter extends MapWithDefaultGet {
         return this;
     }
 
-    operatorBase(operator, operand, counter = undefined, keyChoice = sharedKeys) {
+    /**
+     * Helper method for defining operators.
+     *  
+     * @param {CallableFunction} operator - An binary operator as a function
+     * @param {Counter} operand - Another counter to operate on
+     * @param {*} to - A map-like write destination
+     * @param {CallableFunction} keyChoice - A function which returns 
+     * @returns 
+     */
+    operatorBase(operator, operand, to = undefined, keyChoice = sharedKeys) {
         if (! implementsIterable(iterable)) throw TypeError('expected linear iterable or map');
-        if (counter === undefined) counter = new this.prototype.constructor();
+        if (to === undefined) to = new this.prototype.constructor();
 
         var maplike;
         if (hasFunction(operand, 'get')) {
@@ -187,15 +210,15 @@ export class Counter extends MapWithDefaultGet {
             if (problem) throw problem;
             maplike = operand;
         }
-        else { count(operand, counter); }
+        else { count(operand, to); }
 
         for (const k of keyChoice(this, maplike)) {
             const a = this.get(k);
             const b = other.has(k) ? other.get(k) : 0;
             newValue = operator(a, b);
-            counter.set(k, newValue);
+            to.set(k, newValue);
         }
-        return counter;
+        return to;
     }
 
     isSubsetOf(otherSetLike) {
@@ -218,17 +241,9 @@ export class Counter extends MapWithDefaultGet {
 
     }
 
-    union(iterable, counter = undefined) {
-        return this.operator(add, iterable, counter);
-    }
-
-    intersection(iterable, counter = undefined) {
-        return this.operator(Math.min, iterable, counter);
-    }
-
-    difference(iterable, counter = undefined) {
-        return this.operator(subtract, iterable, counter);
-    }
+    union       (other, to = undefined) { return this.operatorBase(add,      other, to); }
+    intersection(other, to = undefined) { return this.operatorBase(Math.min, other, to); }
+    difference  (other, to = undefined) { return this.operatorBase(subtract, other, to); }
 
 }
 
