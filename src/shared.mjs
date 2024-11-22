@@ -3,17 +3,43 @@
  */
 
 /**
- * 
- * @param {*} object 
- * @returns 
+ * Check if an object has all named values.
+ *
+ * @param {*} object          - Any object
+ * @param {iterable} required - names as symbols or keys
+ * @returns {boolean}         - Whether the object has all named elements.
  */
-export function isFunction(object) {
-    return object && object.apply;
+export function hasAll(object, required) {
+    if (object === null) return false;
+    for (const key of required) {
+        try   { if(! (key in object)) return false; }
+        catch { return false; }
+    }
+    return true;
 }
 
 
-export function hasFunction(object, lookup) {
-    try { return lookup in object && isFunction(object[lookup]); }
+/**
+ * Shallow check for function-like behavior.
+ *
+ * @param {*} object - An object to check
+ * @returns {boolean} - Whether a function appears to be a function.
+ */
+export function isFunction(object, required = ['call', 'apply', 'bind']) {
+    return hasAll(object, required);
+}
+
+
+/**
+ * True if the object has a function-like value for the lookup key.
+ *
+ * @param {*} object - Any object.
+ * @param {string|Symbol} lookup - A string or symbol
+ * @param {functionPredicate} - A predicate.
+ * @returns {boolean} - Whether lookup gets a function-like value.
+ */
+export function hasFunction(object, lookup, functionPredicate = isFunction) {
+    try   { return lookup in object && functionPredicate(object[lookup]); }
     catch { return false; }
 }
 
@@ -21,8 +47,8 @@ export function hasFunction(object, lookup) {
 /**
  * True when at least one item in the iterable is truthy
  *  
- * @param {*} iterable - An iterable of values
- * @returns {boolean}
+ * @param {*} iterable - An iterable of values.
+ * @returns {boolean} - Whether any items are truthy.
  */
 export function anyOf(iterable) {
     for (const value of iterable) {
@@ -35,7 +61,7 @@ export function anyOf(iterable) {
 /**
  * Iterate through the iterable, returning false if any if aren't truthy.
  *  
- * @param {*} iterable - An iterable of any items
+ * @param {*} iterable - An iterable of values.
  * @returns {boolean} - Whether all elements are truthy.
  */
 export function allOf(iterable) {
@@ -49,7 +75,7 @@ export function allOf(iterable) {
 /**
  * Iterate through the iterable, returning true if all are falsy.
  * 
- * @param {noneOf} iterable - An iterable of any items
+ * @param {noneOf} iterable - An iterable of values.
  * @returns {boolean} - Whether no element is truthy
  */
 export function noneOf(iterable) {
@@ -66,42 +92,13 @@ export function noneOf(iterable) {
  * @param {*} hasGetAndHas - an object with both get and has methods
  * @param {*} key          - a key to look up
  * @param {*} defaultValue - the default value to return
- * @returns {boolean} - 
+ * @returns {boolean} - Either the value or the default. 
  */
 export function defaultGet(hasGetAndHas, key, defaultValue) {
     if(hasGetAndHas.has(key)) return hasGetAndHas.get(key);
     return defaultValue;
 }
 
-
-/**
- * Check if an object has all named values.
- *  
- * @param {*} object          - Any object
- * @param {iterable} required - names as symbols or keys
- * @returns {boolean}         - Whether the object has all named elements.
- */
-export function hasAll(object, required) {
-    if (object === null) return false;
-    for (const key of required) {
-        if(! (key in object)) return false;
-    }
-    return true;
-}
-
-
-
-export function makePassthruCache(cacheObject) {
-    function passThruCacheFunction(k, v) {
-        cacheObject.set(k, v);
-        return v;
-    }
-
-    return passThruCacheFunction;
-}
-
-const typeCache = new Map();
-const cacheType = makePassthruCache(typeCache);
 
 /**
  * An ugly, sorta-working way to get type info.
@@ -113,13 +110,10 @@ const cacheType = makePassthruCache(typeCache);
  */
 export function tryGetType(classOrInstance) {
     try {
-        /* A truly heinous trick:
-         * 1. Try to subclass the value
-         * 2. If it works, return the name */ 
+        // If we can subclass it, it's a class
         class _ extends classOrInstance {}
         return classOrInstance;
     } catch {
-        // Don't cache instances themselves because we might check a lot of them
         try { if('constructor' in classOrInstance) {
                 const type = classOrInstance.constructor;
                 return type;
@@ -130,15 +124,13 @@ export function tryGetType(classOrInstance) {
         `expected a type or instance of one, but got neither: ${JSON.stringify(classOrInstance)}`);
 }
 
-// const typeNameCache = new Map();
-// const cacheTypeName = makePassthruCache();
 
 /**
- * Attempt to get get the name of an instance or class.
+ * An ugly, sorta-working way to get the type name.
  *
  * IMPORTANT: This is half-broken "fast food" / prototyping code!
  * 
- * @param {*} classOrInstance - 
+ * @param {*} classOrInstance - A class or instance of one.
  * @returns {string} - a string with the class name.
  * @throws {TypeError} - a TypeError when no class seems to have been ba not appear to be a class.
  */
@@ -148,15 +140,17 @@ export function tryGetTypeName(classOrInstance) {
          * 1. Try to subclass the value
          * 2. If it works, return the name */ 
         class _ extends classOrInstance {}
-        return classOrInstance.name;
-        
+        const name = classOrInstance.name;
+        return name;
     } catch {
-        try { if('constructor' in classOrInstance) {
-            const name = classOrInstance.constructor.name;
+        try   {
+            // Separate th
+            const constructor = classOrInstance.constructor;
+            const name = constructor.name;
             return name;
-        }} catch {}
+        }
+        catch {}
     }
-
     throw TypeError(
-        `expected a type or instance of one, but got neither: ${JSON.stringify(classOrInstance)}`);
+            `expected a type or instance of one, but got neither: ${JSON.stringify(classOrInstance)}`);
 }
