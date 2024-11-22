@@ -1,4 +1,5 @@
-import { isLikeReadableMap, implementsIterable, isFunction } from "./inspect.mjs";
+import { isLikeReadableMap, implementsIterable } from "./inspect.mjs";
+import { isFunction } from "./shared.mjs";
 
 export function asMapArgPairs(iterable) {
     if (isLikeReadableMap(iterable))       { return iterable.entries(); }

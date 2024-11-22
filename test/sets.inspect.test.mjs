@@ -1,4 +1,6 @@
-import { isFunction, hasFunction, implementsIterable, implementsIterableWithHas } from "../src/inspect.mjs";
+import { implementsIterable, implementsIterableWithHas } from "../src/inspect.mjs";
+import { hasFunction } from "../src/shared.mjs";
+import { isFunction } from "../src/shared.mjs";
 import { assert, describe, except, it } from 'vitest';
 import { NOT_FUNCTIONS } from "./helpers.mjs";
 

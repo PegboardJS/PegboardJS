@@ -6,24 +6,9 @@
  * historic implemenetations.
  */
 
-import { hasAll } from "./shared.mjs";
+import { hasAll, hasFunction } from "./shared.mjs";
 import { polyfillSetType } from "./sets.setpolyfill.mjs";
 
-
-
-export function isFunction(object) {
-    return object && object.apply;
-}
-
-export function hasFunction(object, lookup) {
-    if (object === undefined || object === null) return false;
-    try {
-        return lookup in object && isFunction(object[lookup]);
-    } catch { return false; }
-    // if (! (lookup in object)) return false;
-    // const fn = object[lookup];
-    // return Boolean(fn) && isFunction(fn);
-}
 
 /**
  * Check whether the object has a callable entry for Symbol.iterator.
@@ -49,7 +34,6 @@ export function implementsIterableWithHas(object) {
     if (! object) return false;
     return implementsIterable(object) && hasFunction(object, 'has');
 }
-
 
 
 // Needed on lower Node versions
@@ -84,5 +68,3 @@ export function isLikeReadableMap(object) {
 export function isLikeWritableMap(object) {
     return hasAll(object, WRITABLE_MAP_LIKE);
 }
-
-

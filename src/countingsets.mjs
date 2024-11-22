@@ -3,7 +3,8 @@
  * 
  */
 import { tryGetTypeName } from "./shared.mjs";
-import { hasFunction, implementsIterable, implementsIterableWithHas, isLikeReadableMap } from "./inspect.mjs";
+import { implementsIterable, implementsIterableWithHas, isLikeReadableMap } from "./inspect.mjs";
+import { hasFunction } from "./shared.mjs";
 import { MapWithDefaultGet } from "./nicermap.mjs";
 import { add, subtract } from "./operators.mjs";
 
