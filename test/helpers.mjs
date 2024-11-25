@@ -3,6 +3,16 @@
  */
 
 import { skip } from "vitest";
+import { isFunction, tryGetTypeName } from "../src/shared.mjs";
+
+import { describe as vitestDescribe } from "vitest";
+
+export function describe(msgOrFunction, ...rest) {
+    var message;
+    if(typeof msgOrFunction === 'string') message = msgOrFunction;
+    if(isFunction(msgOrFunction)) message = msgOrFunction.name;
+    vitestDescribe(message, ...rest);
+}
 
 
 export function shorthand(fn, prefix) {
@@ -10,6 +20,14 @@ export function shorthand(fn, prefix) {
         fn(`${prefix} ${description}`, ...rest);
     }
     return _shorthand;
+}
+
+export function typeComboToString(combo, sep = ' x ') {
+    const out = [];
+    for(const item of combo()) {
+        tryGetTypeName(item)
+    }
+    return combo.map((item) => tryGetTypeName(item)).join(sep);
 }
 
 export const NOT_FUNCTIONS = [

@@ -1,6 +1,7 @@
 import { assert, describe, expect, it } from "vitest";
 import { isLikeReadableMap, isLikeWritableMap } from "../src/inspect.mjs";
-import { Counter, MultiSet } from "../src/countingsets.mjs";
+import { MultiSet } from "../src/containers/multiset.mjs";
+import { Counter } from "../src/containers/counter.mjs";
 
 const returnsEmpty = () => [];
 

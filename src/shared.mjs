@@ -2,6 +2,7 @@
  * Shared helper functions with no deps outside this module.
  */
 
+
 /**
  * Check if an object has all named values.
  *
@@ -29,6 +30,12 @@ export function isFunction(object, required = ['call', 'apply', 'bind']) {
     return hasAll(object, required);
 }
 
+export function canSubclass(object)  {
+    try {
+        class local extends object {}
+        return true;
+    } catch { return false; }
+}
 
 /**
  * True if the object has a function-like value for the lookup key.
@@ -40,55 +47,100 @@ export function isFunction(object, required = ['call', 'apply', 'bind']) {
  */
 export function hasFunction(object, lookup) {
     if(object === null || object === undefined) return false;
-    try { 
-        const got = object[lookup];
-        return isFunction(got);
-    }
+    var fn;
+    try   { fn = object[lookup]; }
     catch { return false; }
+    return isFunction(fn)
 }
 
 
-/**
- * True when at least one item in the iterable is truthy
- *  
- * @param {*} iterable - An iterable of values.
- * @returns {boolean} - Whether any items are truthy.
- */
-export function anyOf(iterable) {
-    for (const value of iterable) {
-        if (value) return true;
-    }
-    return false;
-}
-
-
-/**
- * Iterate through the iterable, returning false if any if aren't truthy.
- *  
- * @param {*} iterable - An iterable of values.
- * @returns {boolean} - Whether all elements are truthy.
- */
-export function allOf(iterable) {
-    for (const value of iterable) {
-        if (! value) return false;
+export function hasFunctions(object, ...lookups) {
+    if(object === null || object === undefined) return false;
+    var fn;
+    for(const lookup of lookups) {
+        try   { fn = object[lookup]; }
+        catch { return false; }
+        if(! isFunction(fn) ) return false;
     }
     return true;
 }
 
 
 /**
- * Iterate through the iterable, returning true if all are falsy.
+ * Create a proxy which checks all adapters in order before the object.
+ *
+ * This has two main benefits which outweigh O(N) behavior in PegboardJS: 
+ * 1. Simplcity of implementation
+ * 2. The original adapter objects remain mutable and inspectable
+ *
+ * @param {*} toProxy - an object to proxy.
+ * @param  {...any} adapters - One or more Proxy-compatible objects in lookup order.
+ * @returns {Proxy} - the resulting proxy.
+ */
+export function getFallthroughProxy(toProxy, ...adapters) {
+    if(toProxy === null || toProxy === undefined) throw TypeError(`got impermissible value ${toProxy}`);
+
+    return new Proxy(toProxy, {
+        get: (obj, prop) => {
+            for (const adapter of adapters) {
+                if (prop in adapter) return adapter[prop];
+            }
+            return obj[prop];
+        }
+    });
+}
+
+export class ImmutableError extends TypeError {}
+
+const immutableCache = new WeakMap();
+const immutableConfig = {
+    get(object, key) {
+        var value = object[key];
+        //Nasty special-casing for Map-likes
+        if (isFunction(value)) {
+            switch(key) {
+                case 'set':
+                    function set(key, value) {
+                        throw new ImmutableError(`cant set ${JSON.stringify(key)} with value ${JSON.stringify(value)} on immutable proxy of ${JSON.stringify(object)}`);
+                    }
+                    return immutableView(set);
+                case 'get':
+                    function get(key) {
+                        return object.get(key);
+                    }
+                    return immutableView(get);
+                default:
+                    break;
+            }
+        }
+        // These types are immutable by default anyway
+        else if (typeof value !== 'object') return value;
+        // Recursively immutable views for all else
+        else
+            return  immutableView(value);
+    },
+    set(object, key, value) {
+        throw new ImmutableError(`can't set ${JSON.stringify(key)} to ${JSON.stringify(value)} on immutable proxy of ${JSON.stringify(object)}`);
+    }
+};
+
+/**
+ * Attempt to create an immutable view of the passed object.
  * 
- * @param {noneOf} iterable - An iterable of values.
- * @returns {boolean} - Whether no element is truthy
+ * WARNING: Maps are currently the only special-cased object for this.
+ * 
+ * @param {} object 
+ * @param {*} config 
+ * @returns 
  */
-export function noneOf(iterable) {
-    for (const value of iterable) {
-        if(value) return false;
-    }
-    return true;
+export function immutableView(object, config = immutableConfig) {
+    if(immutableCache.has(object)) return immutableCache.get(object);
+    const proxy = new Proxy(
+        object, config
+    );
+    immutableCache.set(object, proxy);
+    return proxy;
 }
-
 
 /**
  * Wraps the get and has methods for objects which lack
@@ -105,6 +157,24 @@ export function defaultGet(hasGetAndHas, key, defaultValue) {
 
 
 /**
+ * Create an object-based representation of defaultGet for a Map-like.
+ *
+ * @param {Map} mapLike - Anything with a .get() method.
+ * @param {*} defaultValue - The default value to return
+ * @returns {Proxy} - A Map-like we want to act like a DefaultMap.
+ */
+export function getDefaultMapLikeProxy(mapLike, defaultValue) {
+    const adapter = {
+        get: (key) => {defaultGet(mapLike, key, defaultValue); },
+        entries: function*() { return mapLike.entries(); },
+        // TODO: check this
+        [Symbol.iterator]: function*() {for (const v of mapLike.keys()) yield v; }
+    };
+    return getFallthroughProxy(mapLike, adapter);
+}
+
+
+/**
  * An ugly, sorta-working way to get type info.
  *
  * As the name implies, this is not guaranteed to work.
@@ -113,17 +183,11 @@ export function defaultGet(hasGetAndHas, key, defaultValue) {
  * @returns {Function} - A constructor / type function
  */
 export function tryGetType(classOrInstance) {
-    try {
-        // If we can subclass it, it's a class
-        class _ extends classOrInstance {}
-        return classOrInstance;
-    } catch {
-        try { if('constructor' in classOrInstance) {
-                const type = classOrInstance.constructor;
-                return type;
-        }} catch {}
-    }
-
+    if     (canSubclass(classOrInstance)) return classOrInstance;
+    try { if('constructor' in classOrInstance) {
+            const type = classOrInstance.constructor;
+            return type;
+    }} catch {}
     throw TypeError(
         `expected a type or instance of one, but got neither: ${JSON.stringify(classOrInstance)}`);
 }
@@ -157,4 +221,23 @@ export function tryGetTypeName(classOrInstance) {
     }
     throw TypeError(
             `expected a type or instance of one, but got neither: ${JSON.stringify(classOrInstance)}`);
+}
+
+
+/**
+ * Merge all keys from all Set-like or Map-like arguments.
+ *
+ * @param  {...Map|Set} from - Items with keys() methods
+ * @returns {Set} - All keys seen, in the order encountered.
+ */
+export function allKeys(...from) {
+    var result = new Set();
+    for (const item of from) {
+        // Maps are considered Set-like here
+        if(hasFunctions(item, 'has', 'keys'))
+            for (const k of item.keys()) result.add(k);
+        else
+            throw TypeError(`non-Set-like value: ${item}`);
+    }
+    return result;
 }

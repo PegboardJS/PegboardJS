@@ -1,4 +1,8 @@
-import { UnexpectedFloat, UnexpectedNegative, Counter, MultiSet, count } from "../src/countingsets.mjs";
+import { count } from "../src/countingsets.mjs";
+import { UnexpectedNegative } from "../src/core/exceptions.mjs";
+import { UnexpectedFloat } from "../src/core/exceptions.mjs";
+import { MultiSet } from "../src/containers/multiset.mjs";
+import { Counter } from "../src/containers/counter.mjs";
 
 import { assert, describe, expect, it } from "vitest";
 import { NOT_INTEGERS, NOT_ITERABLES, NOT_NUMBERS } from "./helpers.mjs";
@@ -32,7 +36,7 @@ describe(Counter, () => {
             assert((new Counter().get('a') === 0));
         });
         it('returns default for non-existent values when provided', () => {
-            assert((new Counter().get('b', 2) === 2));
+            assert((new Counter().get('b') === 0));
         });
     });
     describe('set', () => {
@@ -41,6 +45,11 @@ describe(Counter, () => {
             c.set(1, 1);
             assert(c.has(1));
             assert(c.get(1) == 1);
+        });
+        it('adjusts total on fresh instance', () => {
+            const c = new Counter();
+            c.set(2,1);
+            assert(c.total == 1);
         });
         it('sets value when valid overwriting old value', () => {
             const c = new Counter();
@@ -54,8 +63,32 @@ describe(Counter, () => {
             c.set(1, 0);
             assert(! c.has(1));
         });
-
-    })
+    });
+    describe('delete', () => {
+        it('returns false when do not have key', () => {
+            const c = new Counter();
+            assert(c.delete('missing key') === false);
+        });
+        it('returns true when have key', () => {
+            const c = new Counter();
+            c.set('present', 1);
+            assert(c.has('present'));
+            assert(c.delete('present') === true);
+        });
+        it('deletes value', () => {
+            const c = new Counter();
+            c.set('present', 1);
+            c.delete('present');
+            assert(c.has('present')  === false);
+        });
+        it('reduces total value', () => {
+            const c = new Counter();
+            c.set('filler', 20);
+            c.set(2, 1);
+            c.delete(2);
+            assert(c.total === 20);
+        });
+    });
 });
 
 describe(count, () => {
