@@ -2,7 +2,7 @@ import { hasFunction, hasFunctions } from "../../shared.mjs";
 import { polyfillSetType } from "../../containers/setpolyfill.mjs";
 // pending: re-org to move OOP to other parts?
 import { DigitLike } from "../../containers/dial.mjs";
-import { DuplicatedValue, UnexpectedFloat, UnexpectedNegative } from "../exceptions.mjs";
+import { DuplicatedValue, ExpectedIterable, UnexpectedFloat, UnexpectedNegative } from "../exceptions.mjs";
 import { implementsIterable } from "../../inspect.mjs";
 
 polyfillSetType();
@@ -233,10 +233,6 @@ export function zip(...iterables) {
     }
     return zipGenerator(iterables)
 }
-const z = zip([1], [1]);
-const a = Array.from(z);
-console.log(a);
-
 
 /**
  * Unlike zip, this function returns a generator which throws an exception on mismatch.
@@ -260,6 +256,34 @@ export function zipStrict(...iterables) {
 }
 
 
+function* enumerateGenerator(iterable, start) {
+    var index = start;
+    for(const item of iterable) {
+        yield [index++, item];
+    }
+}
+
+/**
+ * Prepend an index to every item in iterable.
+ *
+ * This is less useful than is mostly useful for Set since Array.prototype.entries()
+ *
+ * @param {Iterable<T>} iterable - An iterable object to enumerate
+ * @param {Number} [start=0] - an integer to start at
+ * @generator {[Number, T]}
+ */
+export function enumerate(iterable, start = 0) {
+    if (! hasFunction(iterable, Symbol.iterator)) throw new ExpectedIterable(
+        `expected an iterable for first argument, but got ${JSON.stringify(iterable)}`);
+    
+    var problem = null;
+    if      (typeof start !== 'number') problem = TypeError;
+    else if (! Number.isInteger(start)) problem = UnexpectedFloat;
+    else if (! start < 0)               problem = UnexpectedNegative;
+    if (problem) throw new problem(`nTimes expects an integer >= 0, not ${start}`);
+
+    return enumerateGenerator(iterable, start);
+}
 
 function* repeatGenerator(item, nTimes) {
     for(const _ of range(nTimes)) yield item;

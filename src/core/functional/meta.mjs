@@ -28,3 +28,6 @@ export function newless(type) {
 
     return denewWrapper;
 }
+
+export function immutableView(object) {
+}

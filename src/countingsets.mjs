@@ -19,7 +19,7 @@ import { getDefaultMapLikeProxy, getFallthroughProxy, hasFunction } from "./shar
  * @returns {Map} The counter object used: either the passed one or a new Counter.
  */
 export function count(iterable, countInto = undefined) {
-    if (! implementsIterable(iterable))
+    if (! hasFunction(iterable, Symbol.iterator))
         throw TypeError(`expected iterable, but got ${JSON.stringify(iterable)}`);
     else if (countInto === undefined)
         countInto = new Map();
@@ -94,13 +94,17 @@ export function proxySetLikeWithOnes(setLike) {
  * @returns {Proxy|Map|null} - null on fail, or a map-like (has get) object.
  */
 export function asReadOnlyCounterLike(likeSetOrMap) {
+    console.log('start', likeSetOrMap)
     // Exit ASAP if it isn't even Set-like.
     if      (! implementsIterableWithHas(likeSetOrMap)) return null;
 
+    console.log('e', likeSetOrMap);
     // In theory, we could nest proxies, but no. That is silly.
-    else if (! hasFunction(likeSetOrMap, 'get')) return proxySetLikeWithOnes(likeSetOrMap);
-    else if ('defaultValue' in likeSetOrMap)     return likeSetOrMap;
-    else
-        return proxyMapLikeAsCounterLike(likeSetOrMap);
+    if (! hasFunction(likeSetOrMap, 'get')) return proxySetLikeWithOnes(likeSetOrMap);
+    if ('defaultValue' in likeSetOrMap)     {
+        console.log("looks like a counter?")
+        return likeSetOrMap;
+    }
+    console.log("does not look like a counter");
+    return proxyMapLikeAsCounterLike(likeSetOrMap);
 }
-

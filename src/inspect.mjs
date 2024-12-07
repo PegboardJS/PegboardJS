@@ -7,7 +7,7 @@
  */
 
 import { hasAll, hasFunction } from "./shared.mjs";
-import { polyfillSetType } from "./sets.setpolyfill.mjs";
+import { polyfillSetType } from "./containers/setpolyfill.mjs";
 
 
 /**

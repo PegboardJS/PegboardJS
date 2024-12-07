@@ -11,7 +11,8 @@
  */
 
 import { polyfillPrototype } from "../core/bootstrapping/polyfill.mjs";
-import { hasFunction } from "../shared.mjs";
+import { ExpectedIterable } from "../core/exceptions.mjs";
+import { hasFunction, hasFunctions} from "../shared.mjs";
 
 
 // Helper encalsulated swapping set sizes
@@ -25,7 +26,7 @@ export const predicateMethods = {
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/isSubsetOf
     isSubsetOf(other) {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set#set-like_objects
-        if (! hasFunction(other, 'has')) throw TypeError(
+        if (! hasFunction(other, 'has')) throw ExpectedIterable(
             `expected Set-like object with has method, but got ${JSON.stringify(other)}`);
         if(other === this) return true;
         for (const element of this) {
@@ -35,7 +36,7 @@ export const predicateMethods = {
     },
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/isSupersetOf
     isSupersetOf(other) {
-        if (! hasFunction(other, Symbol.iterator)) throw TypeError(
+        if (! hasFunction(other, Symbol.iterator)) throw ExpectedIterable(
             `expected Set-like object with Symbol.iterator, but got ${JSON.stringify(other)}`);
         for (const element of other) {
             if (! this.has(element) ) return false;
@@ -43,7 +44,7 @@ export const predicateMethods = {
         return true;
     },
     isDisjointFrom(other) {
-        if(! ('size' in other &&  hasFunction(other, Symbol.iterator))) throw TypeError(
+        if(! ('size' in other &&  hasFunction(other, Symbol.iterator))) throw ExpectedIterable(
             `expected Set-like object with both size property and Symbol.iterator, but got ${JSON.stringify(other)}`);
     
         const [smaller, larger] = smallLarge(other, this);
@@ -59,7 +60,7 @@ export const setMethods = {
 
     // IMPORTANT: This returns items in this set, but not the other!
     difference(other) {
-        if(! hasFunction(other, 'has')) throw TypeError(
+        if(! hasFunction(other, 'has')) throw ExpectedIterable(
             `expected Set-like object with has() method, but got ${JSON.stringify(other)}`);
         const result = new this.constructor();
         for (const item of this) {
@@ -68,8 +69,8 @@ export const setMethods = {
         return result;
     },
     union(other) {
-        if(! hasFunction(other, 'has')) throw TypeError(
-            `expected Set-like object with has() method, but got ${JSON.stringify(other)}`);
+        if(! hasFunctions(other, 'has', Symbol.iterator)) throw ExpectedIterable(
+            `expected Set-like object to be iterable with has() method, but got ${JSON.stringify(other)}`);
 
         const result = new this.constructor(this);
         for (const item of other) result.add(item);
@@ -140,4 +141,4 @@ export function polyfillSetType(
     alreadyPolyfilled.add(type)
     polyfillPrototype(type.prototype, source, replaceExisting);
 }
-polyfillPrototype(_LocalPatchedTracker.prototype, allPolyfillMethods);
+polyfillPrototype(_LocalPatchedTracker, allPolyfillMethods);

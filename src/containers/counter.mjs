@@ -1,9 +1,11 @@
+import { add } from "../core/functional/operators.mjs";
 import { asReadOnlyCounterLike, count } from "../countingsets.mjs";
-import { allKeys } from "../shared.mjs";
+import { allKeys, getDefaultMapLikeProxy } from "../shared.mjs";
 import { UnexpectedFloat } from "../core/exceptions.mjs";
 import { implementsIterable } from "../inspect.mjs";
 import { hasFunctions, hasFunction } from "../shared.mjs";
 import { DefaultMap } from "./defaultmap.mjs";
+import { getSpread } from "../core/functional.mjs";
 
 
 /**
@@ -47,7 +49,8 @@ export class Counter extends DefaultMap {
     checkMapLikeValues(mapLike, checker) {
         var problem;
         for (v in mapLike.values()) {
-            if ((problem = checker(v))) return v;
+            const problem = checker(v);
+            if (problem) return problem;
         }
         return null;
     }
@@ -65,10 +68,8 @@ export class Counter extends DefaultMap {
         const asMapLike = asReadOnlyCounterLike(iterable);
         if (asMapLike === null) throw TypeError(
             `expected a Set-like or Map-like, not ${JSON.stringify(iterable)}`);
-
-        asMapLike
-            .entries()
-            .map((pair) => this.set(...pair));
+        console.log(asMapLike);
+        for(cont [k,v] of asMapLike.entries()) this.set(k, v);
 
     }
 
@@ -106,6 +107,7 @@ export class Counter extends DefaultMap {
         return this;
     }
 
+    //pending: rework to add / Symbol.PegboardSetALL
     /**
      * Add the passed amount to the value for the given key.
      *
@@ -137,7 +139,8 @@ export class Counter extends DefaultMap {
         this.set(key, newCount);
         return this;
     }
-
+    // pending: symbol in-place control
+    // pending: wtf's up with proxies?
     /**
      * Helper method for defining operators over Counter and subclasses.
      *
@@ -161,23 +164,59 @@ export class Counter extends DefaultMap {
      * @returns {Map} - the Map-like written to.
      */
     operatorBase(operator, operand, to = undefined, keyChoice = allKeys) {
-        if (!implementsIterable(iterable)) throw TypeError('expected linear iterable or map');
-        if (to === undefined) to = new this.prototype.constructor();
+        console.log('\noperand', operand);
+        if (!implementsIterable(operand)) 
 
-        var maplike;
-        if (hasFunction(operand, 'get')) {
-            var problem = this.checkMapLikeValues(operand, Counter.checkValue);
-            if (problem) throw problem;
-            maplike = operand;
-        }
-        else { count(operand, to); }
+        var maplike = asReadOnlyCounterLike(operand);
+        console.log("result is", maplike);
+        if(! maplike ) throw TypeError(`expected Set-like or Map-like iterable or map, not ${operand}`);
 
-        for (const k of keyChoice(this, maplike)) {
-            const a = this.get(k);
-            const b = other.has(k) ? other.get(k) : 0;
-            newValue = operator(a, b);
-            to.set(k, newValue);
+        // TODO: redo the rproblem return here
+        var problem = this.checkMapLikeValues(operand, this.checkValue);
+        if (problem) throw problem;//.type(problem.msg);
+
+        if (to === undefined) to = new this.constructor();
+        const v = [this, maplike ];
+        console.log('v', v);
+        const keys = keyChoice(...v);
+        console.log(keys);
+
+        const candidates = new Map();
+        //TODO: special-case things thing to just ship it?
+        for(const k of keys) {
+                const pair = [
+                    this.get(k),
+                    maplike.get(k)
+                ];
+                const keyResult = operator(...pair);
+                candidates.set(k, keyResult);
         }
+
+        problem = this.checkMapLikeValues(candidates, this.checkValue);
+        if(problem) throw problem;
+        // for (const k of keyChoice(this, maplike)) {
+        //     const a = this.get(k);
+        //     const b = maplike.get(k);
+        //     newValue = operator(a, b);
+        //     to.set(k, newValue);
+        // }
+        for(const pair of candidates.entries()) to.set(k,v);
         return to;
     }
+
+    add     (other, to = undefined) { return this.operatorBase(add, other, to); }
+    //difference(other, to = undefined) { return this.operatorBase(subtract, other, to); }
+
 }
+
+const a = new Counter(new Map([['a', 1], ['b',2]]));
+
+//a.set('a', 1);
+//a.set('b' ,2);
+
+const b = new Counter();
+b.set('c', 3);
+b.set('a', 2);
+
+const c = a.add(b);
+console.log(c);
